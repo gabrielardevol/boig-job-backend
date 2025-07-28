@@ -1,4 +1,4 @@
-# BoigJob - frontend
+# BoigJob - backend
 
 This app is meant to track my job search.
 The usage is simple: Every time I apply to a job offer I copy-paste the description to a form input, and the rest of the form is filled with LLM AI. Same process when receiving a response from the company.
