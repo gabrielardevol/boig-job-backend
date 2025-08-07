@@ -2,7 +2,10 @@
 
 namespace App\Controller;
 
+use App\Repository\InterviewRepository;
 use App\Repository\OfferRepository;
+use App\Repository\OfferResponseRepository;
+use App\Repository\StatusChangeRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -46,29 +49,178 @@ final class DashboardController extends AbstractController
         ]);
     }
 
-    public function dashboardData(OfferRepository $offerRepository) : Response {
+    #[Route('/api/dashboard', name: 'dashboard', methods: ['GET'])]
+    public function dashboardData(OfferRepository $offerRepository, OfferResponseRepository $offerResponseRepository, StatusChangeRepository $statusChangeRepository, InterviewRepository $interviewRepository) : Response {
 
-        // BAR CHART PLATFORM x OFFER_STATUS
-        // pillar totes les ofertes
-        // separar-les per xarxa social
-        // seleccionar-ne la xarxa social i l'estat
-        // tornar un objecte tipus 'xarxa': { waitingForResponse: 124, inProcess: 12, rejected: 12}
+        $offers = $offerRepository->findAll();
 
-        // KPI CARDS
-        // total applications
-        // total first-interviews
-        // total rejections
+        $interviews = $interviewRepository->findAll();
 
-        // RANGO SALARIAL x STATUS
-        // salts de 100 euros
-        // iterar totes les ofertes i retornar {status: string, salarialRange: {minimum: number, mximum: number}}
-        // trobar el valor minim de salarialRange.minimum i el valor maxim de salarialRange.maximum
-        // generar un array amb tots els valors entre minimum i maximum, amb salts de 500€ entremig
-        // iterar cada element del array d'objectes reduits;
-        // si sols te minimum, sumar 1 al corresponent de l'array de numeros
-        // si te min i max, sumar 1 a cada step fins que arribi a max
-        // resultat: {24000: {waitingForResponse: 12, inProcess: 3, rejected: 4}, 25000: {...} ... }
+        $platformAndStatus = $this->countByPlatformAndStatus($offers);
 
-        return "";
+        $kpiData = $this->getKpiData($offers, $interviews);
+
+        $skillFrequency = $this->getSkillFrequency($offers);
+
+        $offersByDay = $offerRepository->countOffersGroupedByDay();
+
+        $responsesByDay = $offerResponseRepository->countGroupedByDay();
+
+        $salaryRange = $this->getSalaryRange($offers);
+
+        return $this->json([
+            'kpiData' => $kpiData,
+            'platformAndStatus' => $platformAndStatus,
+            'skillFrequency' => $skillFrequency,
+            'offersByDay' => $offersByDay,
+            'responsesByDay' => $responsesByDay,
+
+//            'dolor' => $salaryRange
+        ]);
+
     }
+
+    public function countByPlatformAndStatus($offers) {
+        $grouped = [];
+
+        foreach ($offers as $offer) {
+            $platform = $offer->getPlatform();
+
+            if (!isset($grouped[strtolower($platform)])) {
+                $grouped[strtolower($platform)] = [
+                    1 => 0,
+                    2 => 0,
+                    3 => 0,
+                    4 => 0,
+                    5 => 0,
+                    6 => 0,
+                    7 => 0,
+                ];
+            }
+
+            foreach ($offer->getStatusHistory() as $status) {
+                $statusValue = $status->getStatus();
+
+                if (isset($grouped[strtolower($platform)][$statusValue])) {
+                    $grouped[strtolower($platform)][$statusValue]++;
+                }
+            }
+        }
+
+        return $grouped;
+    }
+
+    private function getKpiData(array $offers, array $interviews)
+    {
+
+        $totalApplications = count($offers);
+        $totalInterviews = 0;
+        $totalFirstInterviews = 0;
+        $totalSecondInterviews = 0;
+        $totalRejections = 0;
+
+        foreach ($offers as $offer) {
+            $interviews = $offer->getInterviews();
+            $interviewCount = count($interviews);
+
+            $totalInterviews += $interviewCount;
+
+            if ($interviewCount >= 1) {
+                $totalFirstInterviews++;
+            }
+
+            if ($interviewCount >= 2) {
+                $totalSecondInterviews++;
+            }
+
+            if ($offer->getState() === 2) {
+                $totalRejections++;
+            }
+
+        }
+        return [
+            'totalApplications' => $totalApplications,
+            'totalInterviews' => $totalInterviews,
+            'totalFirstInterviews' => $totalFirstInterviews,
+            'totalSecondInterviews' => $totalSecondInterviews,
+            'totalRejections' => $totalRejections,
+        ];
+    }
+
+    private function getSalaryRange(array $offers): array
+    {
+        $ranges = [];
+
+        $globalMin = PHP_INT_MAX;
+        $globalMax = PHP_INT_MIN;
+
+        $processedOffers = [];
+
+        foreach ($offers as $offer) {
+            $status = $offer->getState(); // string o int, segons el teu cas
+            $salaryMin = $offer->getSalaryMinimum(); // ex: getSalarialRange()->getMinimum()
+            $salaryMax = $offer->getSalaryMaximum(); // pot ser null
+
+            if ($salaryMin !== null) {
+                $globalMin = min($globalMin, $salaryMin);
+            }
+
+            if ($salaryMax !== null) {
+                $globalMax = max($globalMax, $salaryMax);
+            } else {
+                $globalMax = max($globalMax, $salaryMin);
+            }
+
+            $processedOffers[] = [
+                'status' => $status,
+                'min' => $salaryMin,
+                'max' => $salaryMax,
+            ];
+        }
+
+        if ($globalMin === PHP_INT_MAX || $globalMax === PHP_INT_MIN) {
+            return []; // no hi ha dades vàlides
+        }
+
+        $steps = [];
+        for ($i = floor($globalMin / 500) * 500; $i <= $globalMax; $i += 500) {
+            $steps[$i] = [];
+        }
+
+        foreach ($processedOffers as $offer) {
+            $min = $offer['min'];
+            $max = $offer['max'] ?? $min; // si no hi ha màxim, només compta el mínim
+            $status = $offer['status'];
+
+            for ($i = floor($min / 500) * 500; $i <= $max; $i += 500) {
+                if (!isset($steps[$i][$status])) {
+                    $steps[$i][$status] = 0;
+                }
+                $steps[$i][$status]++;
+            }
+        }
+
+        return $steps;
+    }
+
+    public function getSkillFrequency($offers)
+    {
+
+        $allSkills = [];
+        foreach($offers as $offer) {
+            $allSkills = array_merge($allSkills, $offer->getSkills());
+        }
+        $skillsCount = [];
+        foreach ($allSkills as $skill) {
+            $skill = strtolower($skill);
+            if (key_exists($skill , $skillsCount)){$skillsCount[$skill] = $skillsCount[$skill] + 1;}
+            else {$skillsCount[$skill] = 1;}
+        }
+        arsort($skillsCount);
+
+        return $skillsCount;
+    }
+
+
 }
+

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Repository\CommentRepository;
 use App\Repository\OfferRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,9 +26,16 @@ final class OfferController extends AbstractController
         return $this->json([
             'message' => 'Hello from API!',
             'company' => $companyName,
-            'offers' =>  $offers,
+            'offers' => $offers,
         ]);
     }
+    #[Route('/api/comments/by-field/{field}/{value}', name: 'api_comments_by_field', methods: ['GET'])]
+    public function findByField(string $field, mixed $value, CommentRepository $repository) : Response
+    {
+        $comments = $repository->findByField($field, $value);
+        return $this->json($comments);
+    }
+
 
 //    #[Route('/api/offersByAttribute/{attribute}', name: 'allOffersByAttribute')]
 //    public function allByAttribute(string $attribute, OfferRepository $offerRepository): Response {

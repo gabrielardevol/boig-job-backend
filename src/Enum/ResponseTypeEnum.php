@@ -8,4 +8,5 @@ enum ResponseTypeEnum: string
     case CONFIRMATION = 'confirmation';
     case INTERVIEW = 'interview';
     case EMPLOYMENT_OFFER = 'employmentOffer';
+    case ASSIGNMENT = 'assignment';
 }

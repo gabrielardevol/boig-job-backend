@@ -9,6 +9,7 @@ namespace App\Entity;
 use ApiPlatform\Metadata\ApiResource;
 use App\Entity\Offer;
 use App\Enum\ResponseTypeEnum;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Uid\Uuid;
 
@@ -30,6 +31,16 @@ class OfferResponse
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Offer $offer = null;
 
+    #[ORM\Column]
+    private ?\DateTimeImmutable $createdAt = null;
+
+    #[ORM\Column(length: 10000, nullable: true)]
+    private ?string $originalContent = null;
+
+    public function __construct()
+    {
+        $this->createdAt = new \DateTimeImmutable();
+    }
     public function setId(string $id): self
     {
         $this->id = $id;
@@ -70,6 +81,30 @@ class OfferResponse
     public function setOffer(?Offer $offer): self
     {
         $this->offer = $offer;
+        return $this;
+    }
+
+    public function getCreatedAt(): ?\DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getOriginalContent(): ?string
+    {
+        return $this->originalContent;
+    }
+
+    public function setOriginalContent(?string $originalContent): static
+    {
+        $this->originalContent = $originalContent;
+
         return $this;
     }
 }

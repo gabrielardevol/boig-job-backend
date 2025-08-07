@@ -67,12 +67,40 @@ class Offer
     #[ORM\Column(type: 'string', nullable: true, enumType: TypologyEnum::class)]
     private ?TypologyEnum $typology = null;
 
-    #[ORM\Column(type: 'string', nullable: true, enumType: StateEnum::class)]
-    private ?StateEnum $state = StateEnum::WAITING_FOR_RESPONSE;
+    #[ORM\Column(type: 'integer', nullable: true)]
+    private int $state = 1;
+
+    /**
+     * @var Collection<int, StatusChange>
+     */
+    #[ORM\OneToMany(targetEntity: StatusChange::class, mappedBy: 'offer')]
+    private Collection $statusHistory;
+
+    /**
+     * @var Collection<int, Interview>
+     */
+    #[ORM\OneToMany(targetEntity: Interview::class, mappedBy: 'offer')]
+    private Collection $interviews;
+
+    /**
+     * @var Collection<int, Assignment>
+     */
+    #[ORM\OneToMany(targetEntity: Assignment::class, mappedBy: 'offer')]
+    private Collection $assignments;
+
+    /**
+     * @var Collection<int, Comment>
+     */
+    #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'offer')]
+    private Collection $comments;
 
     public function __construct()
     {
         $this->responses = new ArrayCollection();
+        $this->statusHistory = new ArrayCollection();
+        $this->interviews = new ArrayCollection();
+        $this->assignments = new ArrayCollection();
+        $this->comments = new ArrayCollection();
     }
 
     public function getId(): string
@@ -269,15 +297,137 @@ class Offer
         return $this;
     }
 
-    public function getState(): ?StateEnum
+    public function getState(): ?int
     {
         return $this->state;
     }
 
-    public function setState(?StateEnum $state): static
+    public function setState(?int $state): static
     {
         $this->state = $state;
 
         return $this;
     }
+
+    /**
+     * @return Collection<int, StatusChange>
+     */
+    public function getStatusHistory(): Collection
+    {
+        return $this->statusHistory;
+    }
+
+    public function addStatusHistory(StatusChange $statusHistory): static
+    {
+        if (!$this->statusHistory->contains($statusHistory)) {
+            $this->statusHistory->add($statusHistory);
+            $statusHistory->setOffer($this);
+        }
+
+        return $this;
+    }
+
+    public function removeStatusHistory(StatusChange $statusHistory): static
+    {
+        if ($this->statusHistory->removeElement($statusHistory)) {
+            // set the owning side to null (unless already changed)
+            if ($statusHistory->getOffer() === $this) {
+                $statusHistory->setOffer(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Interview>
+     */
+    public function getInterviews(): Collection
+    {
+        return $this->interviews;
+    }
+
+    public function addInterview(Interview $interview): static
+    {
+        if (!$this->interviews->contains($interview)) {
+            $this->interviews->add($interview);
+            $interview->setOffer($this);
+        }
+
+        return $this;
+    }
+
+    public function removeInterview(Interview $interview): static
+    {
+        if ($this->interviews->removeElement($interview)) {
+            // set the owning side to null (unless already changed)
+            if ($interview->getOffer() === $this) {
+                $interview->setOffer(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Assignment>
+     */
+    public function getAssignments(): Collection
+    {
+        return $this->assignments;
+    }
+
+    public function addAssignment(Assignment $assignment): static
+    {
+        if (!$this->assignments->contains($assignment)) {
+            $this->assignments->add($assignment);
+            $assignment->setOffer($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAssignment(Assignment $assignment): static
+    {
+        if ($this->assignments->removeElement($assignment)) {
+            // set the owning side to null (unless already changed)
+            if ($assignment->getOffer() === $this) {
+                $assignment->setOffer(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, EntityComments>
+     */
+    public function getComments(): Collection
+    {
+        return $this->comments;
+    }
+
+    public function addComment(EntityComments $comment): static
+    {
+        if (!$this->comments->contains($comment)) {
+            $this->comments->add($comment);
+            $comment->setOffer($this);
+        }
+
+        return $this;
+    }
+
+    public function removeComment(EntityComments $comment): static
+    {
+        if ($this->comments->removeElement($comment)) {
+            // set the owning side to null (unless already changed)
+            if ($comment->getOffer() === $this) {
+                $comment->setOffer(null);
+            }
+        }
+
+        return $this;
+    }
+
+
 }
